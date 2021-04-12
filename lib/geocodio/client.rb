@@ -12,13 +12,13 @@ module Geocodio
 
     CONTENT_TYPE = 'application/json'
     METHODS = {
-      :get    => Net::HTTP::Get,
-      :post   => Net::HTTP::Post,
-      :put    => Net::HTTP::Put,
-      :delete => Net::HTTP::Delete
+      get: Net::HTTP::Get,
+      post: Net::HTTP::Post,
+      put: Net::HTTP::Put,
+      delete: Net::HTTP::Delete
     }
     HOST = 'api.geocod.io'
-    BASE_PATH = '/v1.2'
+    BASE_PATH = '/v1.6'
     PORT = 80
 
     def initialize(api_key = ENV['GEOCODIO_API_KEY'])
@@ -36,8 +36,8 @@ module Geocodio
     def geocode(addresses, options = {})
       if addresses.size < 1
         raise ArgumentError, 'You must provide at least one address to geocode.'
-      elsif addresses.size == 1
-        geocode_single(addresses.first, options)
+        # elsif addresses.size == 1
+        # geocode_single(addresses.first, options)
       else
         geocode_batch(addresses, options)
       end
@@ -63,7 +63,7 @@ module Geocodio
         reverse_geocode_batch(coordinates, options)
       end
     end
-    alias :reverse :reverse_geocode
+    alias reverse reverse_geocode
 
     # Sends a GET request to http://api.geocod.io/v1/parse to correctly dissect
     # an address into individual parts. As this endpoint does not do any
@@ -81,76 +81,76 @@ module Geocodio
 
     private
 
-      METHODS.each do |method, _|
-        define_method(method) do |path, params = {}, options = {}|
-          request method, path, options.merge(params: params)
-        end
+    METHODS.each do |method, _|
+      define_method(method) do |path, params = {}, options = {}|
+        request method, path, options.merge(params: params)
+      end
+    end
+
+    def geocode_single(address, options = {})
+      params, options = normalize_params_and_options(options)
+      params[:q] = address
+
+      response = get '/geocode', params, options
+      addresses, input = parse_results(response)
+
+      AddressSet.new(address, *addresses, input: input)
+    end
+
+    def reverse_geocode_single(pair, options = {})
+      params, options = normalize_params_and_options(options)
+      pair = normalize_coordinates(pair)
+      params[:q] = pair
+
+      response = get '/reverse', params, options
+      addresses, input = parse_results(response)
+
+      AddressSet.new(pair, *addresses, input: input)
+    end
+
+    def geocode_batch(addresses, options = {})
+      params, options = normalize_params_and_options(options)
+      options[:body] = addresses
+
+      response = post '/geocode', params, options
+
+      parse_nested_results(response)
+    end
+
+    def reverse_geocode_batch(pairs, options = {})
+      params, options = normalize_params_and_options(options)
+      options[:body] = pairs.map { |pair| normalize_coordinates(pair) }
+
+      response = post '/reverse', params, options
+
+      parse_nested_results(response)
+    end
+
+    def request(method, path, options)
+      path += "?api_key=#{@api_key}"
+
+      if (params = options[:params]) && !params.empty?
+        q = params.map { |k, v| "#{CGI.escape(k.to_s)}=#{CGI.escape(v.to_s)}" }
+        path += "&#{q.join('&')}"
       end
 
-      def geocode_single(address, options = {})
-        params, options = normalize_params_and_options(options)
-        params[:q] = address
+      req = METHODS[method].new(BASE_PATH + path, 'Accept' => CONTENT_TYPE)
 
-        response  = get '/geocode', params, options
-        addresses, input = parse_results(response)
-
-        AddressSet.new(address, *addresses, input: input)
+      if options.key?(:body)
+        req['Content-Type'] = CONTENT_TYPE
+        req.body = options[:body] ? JSON.dump(options[:body]) : ''
       end
 
-      def reverse_geocode_single(pair, options = {})
-        params, options = normalize_params_and_options(options)
-        pair = normalize_coordinates(pair)
-        params[:q] = pair
+      http = Net::HTTP.new HOST, PORT
+      http.read_timeout = options[:timeout] if options[:timeout]
+      res  = http.start { http.request(req) }
 
-        response  = get '/reverse', params, options
-        addresses, input = parse_results(response)
-
-        AddressSet.new(pair, *addresses, input: input)
+      case res
+      when Net::HTTPSuccess
+        Response.new(res)
+      else
+        raise Error, res
       end
-
-      def geocode_batch(addresses, options = {})
-        params, options = normalize_params_and_options(options)
-        options[:body] = addresses
-
-        response = post '/geocode', params, options
-
-        parse_nested_results(response)
-      end
-
-      def reverse_geocode_batch(pairs, options = {})
-        params, options = normalize_params_and_options(options)
-        options[:body] = pairs.map { |pair| normalize_coordinates(pair) }
-
-        response = post '/reverse', params, options
-
-        parse_nested_results(response)
-      end
-
-      def request(method, path, options)
-        path += "?api_key=#{@api_key}"
-
-        if params = options[:params] and !params.empty?
-          q = params.map { |k, v| "#{CGI.escape(k.to_s)}=#{CGI.escape(v.to_s)}" }
-          path += "&#{q.join('&')}"
-        end
-
-        req = METHODS[method].new(BASE_PATH + path, 'Accept' => CONTENT_TYPE)
-
-        if options.key?(:body)
-          req['Content-Type'] = CONTENT_TYPE
-          req.body = options[:body] ? JSON.dump(options[:body]) : ''
-        end
-
-        http = Net::HTTP.new HOST, PORT
-        http.read_timeout = options[:timeout] if options[:timeout]
-        res  = http.start { http.request(req) }
-
-        case res
-        when Net::HTTPSuccess
-          return Response.new(res)
-        else
-          raise Error, res
-        end
-      end
+    end
   end
 end
