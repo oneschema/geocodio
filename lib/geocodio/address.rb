@@ -6,17 +6,12 @@ require 'geocodio/timezone'
 module Geocodio
   class Address
     attr_reader :number, :predirectional, :street, :suffix, :postdirectional,
-                :formatted_street, :city, :state, :zip, :county
-
-    attr_reader :latitude, :longitude
-    alias :lat :latitude
-    alias :lng :longitude
-
-    attr_reader :congressional_districts, :house_district, :senate_district,
+                :formatted_street, :city, :state, :zip, :county, :country, :latitude,
+                :longitude, :congressional_districts, :house_district, :senate_district,
                 :unified_school_district, :elementary_school_district,
-                :secondary_school_district
-
-    attr_reader :timezone
+                :secondary_school_district, :timezone
+    alias lat latitude
+    alias lng longitude
 
     # How accurate geocod.io deemed this result to be given the original query.
     #
@@ -53,6 +48,7 @@ module Geocodio
       @state            = attributes['state']
       @zip              = attributes['zip']
       @county           = attributes['county']
+      @country          = attributes['country']
     end
 
     def set_coordinates(coordinates)
@@ -97,10 +93,10 @@ module Geocodio
       @timezone = Timezone.new(timezone)
     end
 
-    def <=>(address)
-      return -1 if self.accuracy <  address.accuracy
-      return  0 if self.accuracy == address.accuracy
-      return  1 if self.accuracy >  address.accuracy
+    def <=>(other)
+      return -1 if accuracy <  other.accuracy
+      return  0 if accuracy == other.accuracy
+      return  1 if accuracy >  other.accuracy
     end
   end
 end
