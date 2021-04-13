@@ -9,7 +9,8 @@ module Geocodio
                 :formatted_street, :city, :state, :zip, :county, :country, :latitude,
                 :longitude, :congressional_districts, :house_district, :senate_district,
                 :unified_school_district, :elementary_school_district,
-                :secondary_school_district, :timezone
+                :secondary_school_district, :timezone, :secondaryunit,
+                :secondarynumber, :prefix
     alias lat latitude
     alias lng longitude
 
