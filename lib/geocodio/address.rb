@@ -41,6 +41,7 @@ module Geocodio
       @number           = attributes['number']
       @predirectional   = attributes['predirectional']
       @street           = attributes['street']
+      @prefix           = attributes['prefix']
       @suffix           = attributes['suffix']
       @postdirectional  = attributes['postdirectional']
       @formatted_street = attributes['formatted_street']
@@ -49,6 +50,8 @@ module Geocodio
       @zip              = attributes['zip']
       @county           = attributes['county']
       @country          = attributes['country']
+      @secondaryunit	  = attributes['secondaryunit']
+      @secondarynumber	= attributes['secondarynumber']
     end
 
     def set_coordinates(coordinates)
